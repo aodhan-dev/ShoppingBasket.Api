@@ -2,12 +2,12 @@ name: .NET CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,3 +26,15 @@ jobs:
       
     - name: Test
       run: dotnet test --no-build --verbosity normal
+      
+    - name: Generate test coverage report
+      run: |
+        dotnet tool install --global dotnet-reportgenerator-globaltool
+        dotnet test --no-build --collect:"XPlat Code Coverage"
+        reportgenerator -reports:"**/coverage.cobertura.xml" -targetdir:"./coverage" -reporttypes:"Html"
+      
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v3
+      with:
+        name: code-coverage-report
+        path: ./coverage
