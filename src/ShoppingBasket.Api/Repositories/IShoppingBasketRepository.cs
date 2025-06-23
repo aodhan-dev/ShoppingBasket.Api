@@ -4,6 +4,6 @@ namespace ShoppingBasket.Api.Repositories;
 
 public interface IShoppingBasketRepository
 {
-    Task<Item> AddItemAsync(Item item);
     Task<IEnumerable<Item>> AddItemsAsync(IEnumerable<Item> items);
+    Task<bool> RemoveItemAsync(Guid id);
 }

@@ -44,4 +44,25 @@ public class ShoppingBasketController(IShoppingBasketRepository shoppingBasket) 
             Price = request.Price
         };
     }
+
+    [HttpDelete("items/{id}")]
+    public async Task<IActionResult> RemoveItem(Guid id)
+    {
+        try
+        {
+            bool removed = await shoppingBasket.RemoveItemAsync(id);
+
+            if (!removed)
+            {
+                return NotFound($"Item with ID {id} not found.");
+            }
+
+            return NoContent(); // 204 No Content is standard for successful DELETE
+        }
+        catch
+        {
+            return StatusCode(500, $"Error occurred while removing item");
+        }
+    }
 }
+
