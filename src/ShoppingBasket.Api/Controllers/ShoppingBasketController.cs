@@ -9,24 +9,29 @@ namespace ShoppingBasket.Api.Controllers;
 [Route("api/v1/[controller]")]
 public class ShoppingBasketController(IShoppingBasketRepository shoppingBasket) : Controller
 {
-    [HttpPost("add-item")]
-    public async Task<IActionResult> AddItem([FromBody] AddItemRequest request)
+    [HttpPost("add-items")]
+    public async Task<IActionResult> AddItems([FromBody] AddItemsRequest request)
     {
-        if (string.IsNullOrEmpty(request.Name))
+        if (request == null || request.Items.Count == 0)
         {
-            return BadRequest("Request name cannot be empty.");
+            return BadRequest("Request must contain at least one item.");
+        }
+
+        if (request.Items.Any(i => string.IsNullOrEmpty(i.Name)))
+        {
+            return BadRequest("All items must have a name.");
         }
 
         try
         {
-            var item = MapFrom(request);
-            var savedItem = await shoppingBasket.AddItemAsync(item);
+            var items = request.Items.Select(MapFrom).ToList();
+            var savedItems = await shoppingBasket.AddItemsAsync(items);
 
-            return Created($"/api/v1/ShoppingBasket/items/{savedItem.Id}", savedItem);
+            return Created($"/api/v1/ShoppingBasket/items", savedItems);
         }
         catch
         {
-            return StatusCode(500, $"Error occurred while adding item");
+            return StatusCode(500, $"Error occurred while adding items");
         }
     }
 

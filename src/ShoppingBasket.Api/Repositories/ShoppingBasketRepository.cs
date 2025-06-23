@@ -11,4 +11,9 @@ public class ShoppingBasketRepository : IShoppingBasketRepository
         _items.Add(item);
         return Task.FromResult(item);
     }
+
+    public Task<IEnumerable<Item>> AddItemsAsync(IEnumerable<Item> items)
+    {
+        throw new NotImplementedException();
+    }
 }
