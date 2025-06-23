@@ -1,26 +1,20 @@
 using ShoppingBasket.Api.Models;
 using ShoppingBasket.Api.Repositories;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace ShoppingBasket.Tests;
 
 public class ShoppingBasketRepositoryTests
 {
-
     [Fact]
     public async Task AddItemsAsync_ShouldAddAllItemsToRepository()
     {
         // Arrange
         var repository = new ShoppingBasketRepository();
-        var items = new List<Item>
+        var items = new List<BasketItem>
         {
-            new() { Id = Guid.NewGuid(), Name = "Product 1", Price = 10.99m },
-            new() { Id = Guid.NewGuid(), Name = "Product 2", Price = 20.99m },
-            new() { Id = Guid.NewGuid(), Name = "Product 3", Price = 30.99m }
+            new() { ItemId = Guid.NewGuid(), Name = "Product 1", Price = 10.99m, Quantity = 1 },
+            new() { ItemId = Guid.NewGuid(), Name = "Product 2", Price = 20.99m, Quantity = 1 },
+            new() { ItemId = Guid.NewGuid(), Name = "Product 3", Price = 30.99m, Quantity = 1 }
         };
 
         // Act
@@ -32,10 +26,11 @@ public class ShoppingBasketRepositoryTests
 
         foreach (var item in items)
         {
-            Assert.Contains(results, r =>
-                r.Id == item.Id &&
-                r.Name == item.Name &&
-                r.Price == item.Price);
+            var matchingItem = results.FirstOrDefault(r => r.ItemId == item.ItemId);
+            Assert.NotNull(matchingItem);
+            Assert.Equal(item.Name, matchingItem.Name);
+            Assert.Equal(item.Price, matchingItem.Price);
+            Assert.Equal(item.Quantity, matchingItem.Quantity);
         }
     }
     
@@ -44,12 +39,12 @@ public class ShoppingBasketRepositoryTests
     {
         // Arrange
         var repository = new ShoppingBasketRepository();
-        IEnumerable<Item> nullItems = null;
-        
+        IEnumerable<BasketItem>? nullItems = null;
+
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() => 
-            repository.AddItemsAsync(nullItems));
-            
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            repository.AddItemsAsync(nullItems!)); // Use null-forgiving operator to suppress CS8604
+
         Assert.Equal("items", exception.ParamName);
         Assert.Contains("cannot be null or empty", exception.Message);
     }
@@ -59,7 +54,7 @@ public class ShoppingBasketRepositoryTests
     {
         // Arrange
         var repository = new ShoppingBasketRepository();
-        var emptyItems = Enumerable.Empty<Item>();
+        var emptyItems = Enumerable.Empty<BasketItem>();
         
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentException>(() => 
@@ -74,12 +69,12 @@ public class ShoppingBasketRepositoryTests
     {
         // Arrange
         var repository = new ShoppingBasketRepository();
-        var item = new Item { Id = Guid.NewGuid(), Name = "Delete Me", Price = 5.99m };
+        var item = new BasketItem { ItemId = Guid.NewGuid(), Name = "Delete Me", Price = 5.99m, Quantity = 1 };
         
         await repository.AddItemsAsync([item]);
         
         // Act
-        var result = await repository.RemoveItemAsync(item.Id);
+        var result = await repository.RemoveItemAsync(item.ItemId);
         
         // Assert
         Assert.True(result);
@@ -94,6 +89,56 @@ public class ShoppingBasketRepositoryTests
         
         // Act
         var result = await repository.RemoveItemAsync(nonExistentId);
+        
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task AddItemsAsync_DuplicateItemIds_ShouldCombineQuantities()
+    {
+        // Arrange
+        var repository = new ShoppingBasketRepository();
+        var itemId = Guid.NewGuid();
+        var item1 = new BasketItem { ItemId = itemId, Name = "Duplicate Product", Price = 15.99m, Quantity = 1 };
+        var item2 = new BasketItem { ItemId = itemId, Name = "Duplicate Product", Price = 15.99m, Quantity = 2 };
+        
+        // Act
+        await repository.AddItemsAsync([item1]);
+        var results = await repository.AddItemsAsync([item2]);
+        
+        // Assert
+        var resultItem = results.Single(r => r.ItemId == itemId);
+        Assert.Equal(3, resultItem.Quantity); // 1 + 2 = 3
+    }
+    
+    [Fact]
+    public async Task UpdateItemQuantityAsync_ExistingItem_ShouldUpdateQuantity()
+    {
+        // Arrange
+        var repository = new ShoppingBasketRepository();
+        var itemId = Guid.NewGuid();
+        var item = new BasketItem { ItemId = itemId, Name = "Update Quantity Item", Price = 25.99m, Quantity = 1 };
+        await repository.AddItemsAsync([item]);
+        
+        // Act
+        var result = await repository.UpdateItemQuantityAsync(itemId, 5);
+        var updatedItem = (await repository.GetBasketItemsAsync()).Single(i => i.ItemId == itemId);
+        
+        // Assert
+        Assert.True(result);
+        Assert.Equal(5, updatedItem.Quantity);
+    }
+    
+    [Fact]
+    public async Task UpdateItemQuantityAsync_NonExistingItem_ReturnsFalse()
+    {
+        // Arrange
+        var repository = new ShoppingBasketRepository();
+        var nonExistingId = Guid.NewGuid();
+        
+        // Act
+        var result = await repository.UpdateItemQuantityAsync(nonExistingId, 3);
         
         // Assert
         Assert.False(result);

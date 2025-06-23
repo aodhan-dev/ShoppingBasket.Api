@@ -9,6 +9,8 @@ namespace ShoppingBasket.Api.Controllers;
 [Route("api/v1/[controller]")]
 public class ShoppingBasketController(IShoppingBasketRepository shoppingBasket) : Controller
 {
+    private const int DefaultQuantity = 1;
+
     [HttpPost("add-items")]
     public async Task<IActionResult> AddItems([FromBody] AddItemsRequest request)
     {
@@ -25,7 +27,8 @@ public class ShoppingBasketController(IShoppingBasketRepository shoppingBasket) 
         try
         {
             var items = request.Items.Select(MapFrom).ToList();
-            var savedItems = await shoppingBasket.AddItemsAsync(items);
+            var basketItems = items.Select(MapToBasketItem).ToList(); // Convert to BasketItem
+            var savedItems = await shoppingBasket.AddItemsAsync(basketItems);
 
             return Created($"/api/v1/ShoppingBasket/items", savedItems);
         }
@@ -42,6 +45,17 @@ public class ShoppingBasketController(IShoppingBasketRepository shoppingBasket) 
             Id = Guid.NewGuid(),
             Name = request.Name,
             Price = request.Price
+        };
+    }
+
+    private static BasketItem MapToBasketItem(Item item)
+    {
+        return new BasketItem
+        {
+            ItemId = item.Id,
+            Name = item.Name,
+            Price = item.Price,
+            Quantity = DefaultQuantity
         };
     }
 

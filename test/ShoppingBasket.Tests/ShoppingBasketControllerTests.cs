@@ -14,13 +14,13 @@ public class ShoppingBasketControllerTests
     {
         // Arrange
         var mockRepo = new Mock<IShoppingBasketRepository>();
-        var items = new List<Item>
+        var items = new List<BasketItem>
         {
             new() { Name = "Item1", Price = 5.99m },
             new() { Name = "Item2", Price = 10.99m }
         };
 
-        mockRepo.Setup(repo => repo.AddItemsAsync(It.IsAny<List<Item>>()))
+        mockRepo.Setup(repo => repo.AddItemsAsync(It.IsAny<List<BasketItem>>()))
             .ReturnsAsync(items);
 
         var controller = new ShoppingBasketController(mockRepo.Object);
@@ -32,7 +32,7 @@ public class ShoppingBasketControllerTests
         // Assert
         var createdResult = Assert.IsType<CreatedResult>(result);
         Assert.Equal(201, createdResult.StatusCode);
-        var returnedItems = Assert.IsType<List<Item>>(createdResult.Value);
+        var returnedItems = Assert.IsType<List<BasketItem>>(createdResult.Value);
         Assert.Equal(items.Count, returnedItems.Count);
         for (int i = 0; i < items.Count; i++)
         {
@@ -83,7 +83,7 @@ public class ShoppingBasketControllerTests
     {
         // Arrange
         var mockRepo = new Mock<IShoppingBasketRepository>();
-        mockRepo.Setup(repo => repo.AddItemsAsync(It.IsAny<List<Item>>()))
+        mockRepo.Setup(repo => repo.AddItemsAsync(It.IsAny<List<BasketItem>>()))
             .ThrowsAsync(new Exception("Database connection failed"));
 
         var controller = new ShoppingBasketController(mockRepo.Object);
