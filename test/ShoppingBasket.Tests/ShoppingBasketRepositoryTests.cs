@@ -143,4 +143,48 @@ public class ShoppingBasketRepositoryTests
         // Assert
         Assert.False(result);
     }
+
+    [Fact]
+    public async Task GetTotalCostAsync_WithVat_ReturnsCorrectTotal()
+    {
+        // Arrange
+        var repository = new ShoppingBasketRepository();
+        var items = new List<BasketItem>
+        {
+            new() { ItemId = Guid.NewGuid(), Name = "Item 1", Price = 10.00m, Quantity = 2 },
+            new() { ItemId = Guid.NewGuid(), Name = "Item 2", Price = 5.00m, Quantity = 1 }
+        };
+        await repository.AddItemsAsync(items);
+        
+        // Expected: (10.00 * 2 + 5.00) * 1.20 = 30.00
+        decimal expected = 30.00m;
+        
+        // Act
+        decimal totalWithVat = await repository.GetTotalCostAsync(includeVat: true);
+        
+        // Assert
+        Assert.Equal(expected, totalWithVat);
+    }
+
+    [Fact]
+    public async Task GetTotalCostAsync_WithoutVat_ReturnsSubtotal()
+    {
+        // Arrange
+        var repository = new ShoppingBasketRepository();
+        var items = new List<BasketItem>
+        {
+            new() { ItemId = Guid.NewGuid(), Name = "Item 1", Price = 10.00m, Quantity = 2 },
+            new() { ItemId = Guid.NewGuid(), Name = "Item 2", Price = 5.00m, Quantity = 1 }
+        };
+        await repository.AddItemsAsync(items);
+        
+        // Expected: 10.00 * 2 + 5.00 = 25.00
+        decimal expected = 25.00m;
+        
+        // Act
+        decimal subtotal = await repository.GetTotalCostAsync(includeVat: false);
+        
+        // Assert
+        Assert.Equal(expected, subtotal);
+    }
 }

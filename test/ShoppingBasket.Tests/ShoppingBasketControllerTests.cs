@@ -4,6 +4,9 @@ using ShoppingBasket.Api.Controllers;
 using ShoppingBasket.Api.Models;
 using ShoppingBasket.Api.Repositories;
 using ShoppingBasket.Api.Requests;
+using ShoppingBasket.Api.Services;
+using ShoppingBasket.Api.Validation;
+using System.ComponentModel.DataAnnotations;
 
 namespace ShoppingBasket.Tests;
 
@@ -14,16 +17,23 @@ public class ShoppingBasketControllerTests
     {
         // Arrange
         var mockRepo = new Mock<IShoppingBasketRepository>();
+        var mockPricingService = new Mock<IPricingService>();
+        var mockValidator = new Mock<IValidator<BasketItem>>();
+
         var items = new List<BasketItem>
         {
             new() { Name = "Item1", Price = 5.99m },
             new() { Name = "Item2", Price = 10.99m }
         };
 
+        // Setup validator to return valid for these items
+        mockValidator.Setup(v => v.IsValid(It.IsAny<BasketItem>())).Returns(true);
+        mockValidator.Setup(v => v.Validate(It.IsAny<BasketItem>())).Returns([]);
+
         mockRepo.Setup(repo => repo.AddItemsAsync(It.IsAny<List<BasketItem>>()))
             .ReturnsAsync(items);
 
-        var controller = new ShoppingBasketController(mockRepo.Object);
+        var controller = new ShoppingBasketController(mockRepo.Object, mockPricingService.Object, mockValidator.Object);
         var request = new AddItemsRequest([.. items.Select(i => new AddItemRequest(i.Name, i.Price))]);
 
         // Act
@@ -46,7 +56,10 @@ public class ShoppingBasketControllerTests
     {
         // Arrange
         var mockRepo = new Mock<IShoppingBasketRepository>();
-        var controller = new ShoppingBasketController(mockRepo.Object);
+        var mockPricingService = new Mock<IPricingService>();
+        var mockValidator = new Mock<IValidator<BasketItem>>();
+
+        var controller = new ShoppingBasketController(mockRepo.Object, mockPricingService.Object, mockValidator.Object);
         var request = new AddItemsRequest([]);
 
         // Act
@@ -63,7 +76,19 @@ public class ShoppingBasketControllerTests
     {
         // Arrange
         var mockRepo = new Mock<IShoppingBasketRepository>();
-        var controller = new ShoppingBasketController(mockRepo.Object);
+        var mockPricingService = new Mock<IPricingService>();
+        var mockValidator = new Mock<IValidator<BasketItem>>();
+
+        // Setup validator to return invalid for items with empty name
+        mockValidator.Setup(v => v.IsValid(It.Is<BasketItem>(item => string.IsNullOrEmpty(item.Name))))
+            .Returns(false);
+        
+        mockValidator.Setup(v => v.Validate(It.Is<BasketItem>(item => string.IsNullOrEmpty(item.Name))))
+            .Returns([
+                new ValidationResult("Name is required", [nameof(BasketItem.Name)])
+            ]);
+
+        var controller = new ShoppingBasketController(mockRepo.Object, mockPricingService.Object, mockValidator.Object);
         var request = new AddItemsRequest(
         [
             new AddItemRequest("", 5.99m)
@@ -75,7 +100,7 @@ public class ShoppingBasketControllerTests
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal(400, badRequestResult.StatusCode);
-        Assert.Equal("All items must have a name.", badRequestResult.Value);
+        Assert.Equal("All items must have a valid name, price, and quantity.", badRequestResult.Value);
     }
 
     [Fact]
@@ -83,10 +108,17 @@ public class ShoppingBasketControllerTests
     {
         // Arrange
         var mockRepo = new Mock<IShoppingBasketRepository>();
+        var mockPricingService = new Mock<IPricingService>();
+        var mockValidator = new Mock<IValidator<BasketItem>>();
+
+        // Setup validator to return valid for these items
+        mockValidator.Setup(v => v.IsValid(It.IsAny<BasketItem>())).Returns(true);
+        mockValidator.Setup(v => v.Validate(It.IsAny<BasketItem>())).Returns([]);
+
         mockRepo.Setup(repo => repo.AddItemsAsync(It.IsAny<List<BasketItem>>()))
             .ThrowsAsync(new Exception("Database connection failed"));
 
-        var controller = new ShoppingBasketController(mockRepo.Object);
+        var controller = new ShoppingBasketController(mockRepo.Object, mockPricingService.Object, mockValidator.Object);
         var request = new AddItemsRequest(
         [
             new AddItemRequest("Item1", 5.99m),

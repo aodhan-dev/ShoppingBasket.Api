@@ -1,4 +1,7 @@
+using ShoppingBasket.Api.Models;
 using ShoppingBasket.Api.Repositories;
+using ShoppingBasket.Api.Services;
+using ShoppingBasket.Api.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,8 +12,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Register the repository service
+// Register validators and services
+builder.Services.AddScoped<IPricingService, PricingService>();
 builder.Services.AddSingleton<IShoppingBasketRepository, ShoppingBasketRepository>();
+builder.Services.AddScoped<IValidator<BasketItem>, BasketItemValidator>();
 
 var app = builder.Build();
 

@@ -12,12 +12,11 @@ public class ShoppingBasketRepository : IShoppingBasketRepository
         {
             throw new ArgumentException("Items collection cannot be null or empty.", nameof(items));
         }
-        
+
         foreach (var item in items)
         {
             if (_items.TryGetValue(item.ItemId, out var existingItem))
             {
-                // Combine quantities for existing items
                 existingItem.Quantity += item.Quantity;
             }
             else
@@ -49,5 +48,25 @@ public class ShoppingBasketRepository : IShoppingBasketRepository
     public Task<IEnumerable<BasketItem>> GetBasketItemsAsync()
     {
         return Task.FromResult<IEnumerable<BasketItem>>(_items.Values);
+    }
+
+    public async Task<decimal> GetTotalCostAsync(bool includeVat = true)
+    {
+        const decimal vatRate = 0.20m; // 20% VAT
+        
+        var items = await GetBasketItemsAsync();
+        decimal subtotal = items.Sum(item => item.TotalPrice);
+        
+        if (!includeVat)
+            return subtotal;
+            
+        decimal vatAmount = subtotal * vatRate;
+        return subtotal + vatAmount;
+    }
+
+    public Task<BasketItem?> GetBasketItemAsync(Guid itemId)
+    {
+        _items.TryGetValue(itemId, out var item);
+        return Task.FromResult<BasketItem?>(item);
     }
 }
